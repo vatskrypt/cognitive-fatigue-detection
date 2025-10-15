@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pymongo import MongoClient
@@ -7,6 +7,7 @@ from jwt import encode as jwt_encode
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi import Depends, HTTPException
 from bson import ObjectId
+from datetime import datetime
 
 app = FastAPI()
 
@@ -23,15 +24,22 @@ class User(BaseModel):
     email: str
     password: str
 
+class FeatureBatch(BaseModel):
+    session_id: str
+    timestamp: str
+    typing_speed: float
+    error_rate: float
+    mouse_click_rate: float 
 
 #MongoDB Connection
-
 client = MongoClient("mongodb://localhost:27017")
 db = client["mydatabase"]
 users_collection = db["users"]
 
-#secret key for signing the token
+sessions = db["sessions"]
+features = db["sessions"]
 
+#secret key for signing the token
 SECRET_KEY = "your-secret-key-goes-here"
 security = HTTPBearer()
 
@@ -94,6 +102,26 @@ def get_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     if user_data["username"] and user_data["email"]:
         return user_data
     raise HTTPException(status_code=401, detail="Invalid token")
+
+@app.post("/api/session/start")
+def start_session():
+    session_doc = {
+        "start_time": datetime.utcnow(),
+        "end_time": None,
+        "metadata":{}
+    }
+    result = sessions.insert_one(session_doc)
+    return {"session_id": str(result.inserted_id)}
+
+
+@app.post("/api/session/{session_id}/features")
+def save_features(session_id: str, data: FeatureBatch):
+    #convert session_id back to ObjectID
+    data_dict = data.model_dump()
+    data_dict ["session_id"] = ObjectId(session_id)
+    data_dict ["created_at"] = datetime.utcnow()
+    features.insert_one(data_dict)
+    return {"status": "ok"}
 
 def generate_token(email:str) -> str:
     payload = {"email":email}

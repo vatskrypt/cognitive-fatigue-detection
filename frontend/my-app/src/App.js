@@ -4,6 +4,7 @@ import Login from "./components/Login";
 import Register from "./components/Register";
 import Homepage from "./components/Homepage";
 import Navbar from "./components/Navbar";
+import TaskPage from "./components/TaskPage";
 import "./styles.css"; // Import the styles.css file
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
           <Route path="/" element={<Homepage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/taskpage" element={<TaskPage />} />
         </Routes>
       </div>
     </Router>
